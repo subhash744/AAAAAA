@@ -1,0 +1,285 @@
+/* styles.css — all injected styles */
+
+:root {
+  --pa-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* ═══ DROPDOWN ═══════════════════════════════════════════════════ */
+#pa-dropdown {
+  position: absolute; z-index: 999999;
+  background: #fff; background-image: var(--pa-grain); background-repeat: repeat;
+  border: 1px solid rgba(0,0,0,0.07); border-radius: 16px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.03), 0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.05);
+  padding: 6px; max-height: 300px; overflow-y: auto;
+  display: none; min-width: 340px; box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+#pa-dropdown.pa-visible { display: block; animation: pa-in 0.14s cubic-bezier(.22,.68,0,1.18); }
+@keyframes pa-in { from { opacity:0; transform:translateY(6px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+
+.pa-dd-hdr { font-size:10px; font-weight:600; color:rgba(0,0,0,0.28); letter-spacing:.07em; text-transform:uppercase; padding:4px 10px 6px; user-select:none; }
+
+.pa-item { display:flex; align-items:center; gap:7px; padding:9px 10px; border-radius:10px; cursor:pointer; transition:background 0.10s, transform 0.08s; position:relative; }
+.pa-item:hover    { background:rgba(0,0,0,0.045); transform:translateX(1px); }
+.pa-item.pa-active { background:rgba(0,0,0,0.07); transform:translateX(2px); }
+.pa-item.pa-pinned { border-left:2px solid rgba(0,0,0,0.12); padding-left:8px; }
+.pa-pin { font-size:11px; flex-shrink:0; opacity:.75; line-height:1; }
+
+.pa-ibody { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.pa-itext { font-size:13px; color:#0a0a0a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.4; font-weight:430; letter-spacing:-0.01em; }
+.pa-hl { background:#FFE066; color:#000; font-weight:700; border-radius:3px; padding:0 2px; }
+.pa-itag { font-size:10px; color:rgba(0,0,0,0.38); background:rgba(0,0,0,0.05); padding:1px 7px; border-radius:20px; font-weight:500; width:fit-content; letter-spacing:.02em; }
+.pa-uses { font-size:10px; color:rgba(0,0,0,0.28); background:rgba(0,0,0,0.04); padding:2px 6px; border-radius:20px; font-weight:500; flex-shrink:0; font-variant-numeric:tabular-nums; }
+
+.pa-edit-btn { width:24px; height:24px; border-radius:6px; border:none; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; color:rgba(0,0,0,0.3); opacity:0; transition:opacity 0.1s, background 0.1s; flex-shrink:0; }
+.pa-item:hover .pa-edit-btn { opacity:1; }
+.pa-edit-btn:hover { background:rgba(0,0,0,0.07); color:#000; }
+
+.pa-inline-editor { width:100%; margin-top:7px; }
+.pa-inline-input  { width:100%; padding:6px 9px; font-size:12.5px; border:1px solid rgba(0,0,0,0.14); border-radius:8px; outline:none; font-family:inherit; resize:none; background:#fff; color:#0a0a0a; line-height:1.4; }
+.pa-inline-row    { display:flex; gap:5px; margin-top:5px; }
+.pa-inline-save   { padding:5px 12px; border-radius:20px; border:none; cursor:pointer; font-size:11.5px; font-weight:600; font-family:inherit; background:#0a0a0a; color:#fff; }
+.pa-inline-cancel { padding:5px 12px; border-radius:20px; border:none; cursor:pointer; font-size:11.5px; font-weight:600; font-family:inherit; background:rgba(0,0,0,0.06); color:rgba(0,0,0,0.5); }
+
+#pa-dropdown::-webkit-scrollbar { width:4px; }
+#pa-dropdown::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.1); border-radius:4px; }
+#pa-dropdown::-webkit-scrollbar-track { background:transparent; }
+
+/* ═══ SAVE BUTTON GROUP ══════════════════════════════════════════ */
+#pa-btn-group {
+  display: inline-flex; align-items: center;
+  position: absolute; z-index: 99999;
+  background: #fff; background-image: var(--pa-grain); background-repeat: repeat;
+  border: 1px solid rgba(0,0,0,0.12); border-radius: 20px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  user-select: none; white-space: nowrap; overflow: hidden;
+}
+#pa-save-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 11px;
+  background: transparent;
+  border: none; border-right: 1px solid rgba(0,0,0,0.08);
+  font-size: 12px; color: #0a0a0a;
+  cursor: pointer;
+  font-family: inherit; font-weight: 600; letter-spacing: -0.01em;
+  line-height: 1; transition: background 0.1s;
+}
+#pa-save-btn:hover  { background: rgba(0,0,0,0.04); }
+#pa-save-btn:active { background: rgba(0,0,0,0.08); }
+#pa-save-btn svg    { flex-shrink:0; opacity:.7; }
+
+#pa-drag-handle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 100%;
+  padding: 6px 6px;
+  cursor: grab; color: rgba(0,0,0,0.3);
+  border: none; background: transparent;
+  transition: background 0.1s, color 0.1s;
+  font-size: 13px; line-height: 1;
+}
+#pa-drag-handle:hover  { background: rgba(0,0,0,0.04); color: rgba(0,0,0,0.6); }
+#pa-drag-handle:active { cursor: grabbing; }
+
+/* Nav button — sits right next to the save group */
+#pa-nav-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  position: absolute; z-index: 99999;
+  width: 30px; height: 30px;
+  background: #fff; background-image: var(--pa-grain); background-repeat: repeat;
+  border: 1px solid rgba(0,0,0,0.12); border-radius: 50%;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+  cursor: pointer; color: rgba(0,0,0,0.55);
+  transition: background 0.1s, box-shadow 0.1s, transform 0.08s;
+  font-family: -apple-system, sans-serif;
+}
+#pa-nav-btn:hover { background: #f5f5f5; box-shadow: 0 2px 10px rgba(0,0,0,0.12); transform: translateY(-1px); }
+#pa-nav-btn.open  { background: rgba(200,80,10,0.08); border-color: rgba(200,80,10,0.3); color: #c8500a; }
+.pa-nav-badge {
+  position: absolute; top: -4px; right: -4px;
+  background: #c8500a; color: #fff;
+  font-size: 8px; font-weight: 700; min-width: 14px; height: 14px;
+  border-radius: 7px; display: none; align-items: center; justify-content: center;
+  padding: 0 3px; pointer-events: none;
+  font-family: -apple-system, sans-serif;
+}
+
+/* ═══ MODAL (paywall + similar) ══════════════════════════════════ */
+#pa-modal {
+  position: fixed; inset: 0; z-index: 9999998;
+  background: rgba(0,0,0,0); display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+#pa-modal.pa-modal-show { background: rgba(0,0,0,0.42); }
+
+.pa-modal-box {
+  background: #fff; background-image: var(--pa-grain); background-repeat: repeat;
+  border-radius: 20px; padding: 26px 26px 22px;
+  max-width: 320px; width: calc(100% - 40px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.06);
+  display: flex; flex-direction: column; align-items: center; gap: 11px;
+  transform: translateY(12px) scale(0.97); opacity: 0;
+  transition: transform 0.2s cubic-bezier(.22,.68,0,1.2), opacity 0.2s;
+}
+#pa-modal.pa-modal-show .pa-modal-box { transform: translateY(0) scale(1); opacity: 1; }
+
+.pa-modal-icon  { font-size: 26px; line-height: 1; }
+.pa-modal-title { font-size: 15.5px; font-weight: 700; color: #0a0a0a; letter-spacing: -0.02em; text-align: center; }
+.pa-modal-body  { font-size: 12.5px; color: rgba(0,0,0,0.5); line-height: 1.6; text-align: center; }
+.pa-modal-body strong { color: #0a0a0a; }
+.pa-similar-preview { display:block; margin-top:8px; font-style:normal; font-size:12px; background:rgba(0,0,0,0.04); padding:8px 10px; border-radius:8px; color:#0a0a0a; text-align:left; line-height:1.5; }
+
+.pa-modal-cta {
+  width: 100%; padding: 10px; background: #0a0a0a; color: #fff;
+  border: none; border-radius: 12px; font-size: 13px; font-weight: 700;
+  cursor: pointer; letter-spacing: -0.01em; font-family: inherit;
+  transition: background 0.12s, transform 0.08s;
+}
+.pa-modal-cta:hover  { background: #222; }
+.pa-modal-cta:active { transform: scale(0.98); }
+
+.pa-modal-later {
+  background: none; border: none; color: rgba(0,0,0,0.35); font-size: 12px;
+  cursor: pointer; font-family: inherit; padding: 3px 8px; letter-spacing: -0.01em;
+}
+.pa-modal-later:hover { color: #0a0a0a; }
+
+.pa-modal-row { display: flex; gap: 8px; width: 100%; align-items: center; justify-content: center; }
+.pa-modal-row .pa-modal-cta { flex: 1; }
+.pa-modal-row .pa-modal-later { flex: 1; text-align: center; background: rgba(0,0,0,0.05); border-radius: 12px; padding: 10px; font-weight: 600; color: rgba(0,0,0,0.45); }
+.pa-modal-row .pa-modal-later:hover { background: rgba(0,0,0,0.09); color: #0a0a0a; }
+
+/* ═══ SOFT REMINDER BAR ══════════════════════════════════════════ */
+#pa-reminder {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  z-index: 9999997;
+  display: inline-flex; align-items: center; gap: 10px;
+  background: #fff; background-image: var(--pa-grain); background-repeat: repeat;
+  border: 1px solid rgba(0,0,0,0.08); border-radius: 20px;
+  padding: 9px 14px 9px 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12.5px; color: #0a0a0a;
+  opacity: 0; transition: opacity 0.22s, transform 0.22s;
+  pointer-events: auto; max-width: 440px; white-space: nowrap;
+}
+#pa-reminder.pa-rem-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.pa-rem-text { flex: 1; letter-spacing: -0.01em; }
+.pa-rem-text strong { font-weight: 700; }
+.pa-rem-text kbd {
+  display: inline-block; padding: 1px 5px; border: 1px solid rgba(0,0,0,0.14);
+  border-radius: 4px; font-size: 10px; font-family: inherit;
+  background: rgba(0,0,0,0.04); color: rgba(0,0,0,0.5);
+}
+.pa-rem-snooze {
+  padding: 4px 10px; background: rgba(0,0,0,0.05); border: none; border-radius: 20px;
+  font-size: 11.5px; font-weight: 600; cursor: pointer; font-family: inherit;
+  color: rgba(0,0,0,0.45); transition: background 0.1s; flex-shrink: 0;
+}
+.pa-rem-snooze:hover { background: rgba(0,0,0,0.09); color: #0a0a0a; }
+.pa-rem-x {
+  width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; color: rgba(0,0,0,0.3); font-size: 14px;
+  cursor: pointer; border-radius: 50%; transition: background 0.1s; padding: 0; flex-shrink: 0;
+}
+.pa-rem-x:hover { background: rgba(0,0,0,0.06); color: #0a0a0a; }
+
+/* ═══ INLINE SAVE CHIP ═══════════════════════════════════════════ */
+#pa-save-chip {
+  position: absolute; z-index: 999997;
+  display: inline-flex; align-items: center; gap: 7px;
+  background: #fff; background-image: var(--pa-grain); background-repeat: repeat;
+  border: 1px solid rgba(0,0,0,0.09); border-radius: 20px; padding: 7px 10px 7px 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 12.5px; color: #0a0a0a; letter-spacing: -0.01em;
+  opacity: 0; transform: translateY(6px);
+  transition: opacity 0.18s, transform 0.18s;
+  pointer-events: auto; white-space: nowrap;
+}
+#pa-save-chip.pa-chip-show { opacity: 1; transform: translateY(0); }
+.pa-chip-icon  { font-size: 13px; }
+.pa-chip-text  { font-weight: 500; color: rgba(0,0,0,0.6); }
+.pa-chip-yes   { padding:4px 11px; background:#0a0a0a; color:#fff; border:none; border-radius:20px; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; }
+.pa-chip-yes:hover { background: #222; }
+.pa-chip-no    { width:22px; height:22px; display:flex; align-items:center; justify-content:center; background:transparent; border:none; color:rgba(0,0,0,0.3); font-size:14px; cursor:pointer; border-radius:50%; padding:0; }
+.pa-chip-no:hover  { background:rgba(0,0,0,0.06); color:#0a0a0a; }
+
+/* ═══ TOAST ══════════════════════════════════════════════════════ */
+#pa-toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(10px);
+  z-index: 9999999;
+  background: #0a0a0a; background-image: var(--pa-grain); background-repeat: repeat;
+  color: #fff; font-size: 12.5px; font-weight: 500;
+  padding: 8px 18px; border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.22);
+  opacity: 0; transition: opacity 0.18s, transform 0.18s; pointer-events: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  white-space: nowrap; letter-spacing: -0.01em;
+}
+#pa-toast.pa-toast-error { background: #1a0a0a; color: #ff7a6b; }
+#pa-toast.pa-toast-show  { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ═══ VARIABLE POPUP (Pro Feature) ═══════════════════════════════ */
+#pa-variable-popup {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  animation: pa-slideIn 0.2s ease-out;
+}
+
+#pa-variable-popup input:focus {
+  border-color: #10a37f !important;
+  box-shadow: 0 0 0 3px rgba(16, 163, 127, 0.1);
+}
+
+#pa-variable-popup button {
+  transition: all 0.15s ease;
+}
+
+#pa-variable-popup button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+#pa-variable-popup button:active {
+  transform: translateY(0);
+}
+
+/* ═══ KEYFRAME ANIMATIONS ════════════════════════════════════════ */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes pa-slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pa-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ═══ PAYWALL & LICENSE MODAL ════════════════════════════════════ */
+.license-modal,
+.paywall-modal {
+  animation: pa-fadeIn 0.2s ease-out;
+}
+
+.license-modal > div,
+.paywall-modal > div {
+  animation: pa-slideIn 0.3s ease-out;
+}
+
+/* Pro badge glow */
+#pro-badge {
+  animation: pulse 3s ease-in-out infinite;
+}

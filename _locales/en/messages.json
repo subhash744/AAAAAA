@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "Prompt Autocomplete — AI Prompt Manager",
+    "description": "Extension name"
+  },
+  "appDescription": {
+    "message": "Save and reuse AI prompts instantly. Works on ChatGPT, Claude, Gemini, Grok, Perplexity, DeepSeek, Copilot, Midjourney, Bolt, v0 and 40+ AI tools. Autocomplete as you type. Free.",
+    "description": "Extension description"
+  }
+}

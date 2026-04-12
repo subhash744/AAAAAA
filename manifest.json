@@ -1,0 +1,86 @@
+{
+  "manifest_version": 3,
+  "name": "Suggestio — AI Prompt Suggestions",
+  "short_name": "Suggestio",
+  "version": "3.1.0",
+  "default_locale": "en",
+  "description": "Suggestio suggests your saved prompts as you type — like Gmail Smart Compose, but for ChatGPT, Claude, Gemini and more.",
+  "homepage_url": "https://suggestio.vercel.app",
+  "minimum_chrome_version": "109",
+  "permissions": ["storage"],
+  "background": { "service_worker": "background.js" },
+  "host_permissions": [
+    "https://api.dodopayments.com/*",
+    "https://www.google-analytics.com/*",
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://grok.com/*",
+    "https://x.com/*",
+    "https://copilot.microsoft.com/*",
+    "https://chat.deepseek.com/*",
+    "https://www.perplexity.ai/*",
+    "https://www.meta.ai/*",
+    "https://chat.mistral.ai/*",
+    "https://aistudio.google.com/*",
+    "https://notebooklm.google.com/*",
+    "https://lovable.dev/*",
+    "https://app.lovable.dev/*",
+    "https://bolt.new/*",
+    "https://stackblitz.com/*",
+    "https://app.emergent.sh/*",
+    "https://v0.dev/*",
+    "https://v0.app/*",
+    "https://www.anything.com/*",
+    "https://rork.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Suggestio — Your prompts, suggested as you type",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chat.openai.com/*", "https://chatgpt.com/*",
+        "https://claude.ai/*", "https://gemini.google.com/*",
+        "https://grok.com/*", "https://x.com/*",
+        "https://copilot.microsoft.com/*", "https://chat.deepseek.com/*",
+        "https://www.perplexity.ai/*", "https://www.meta.ai/*",
+        "https://chat.mistral.ai/*", "https://aistudio.google.com/*",
+        "https://notebooklm.google.com/*", "https://lovable.dev/*",
+        "https://app.lovable.dev/*", "https://bolt.new/*",
+        "https://stackblitz.com/*", "https://app.emergent.sh/*",
+        "https://v0.dev/*", "https://v0.app/*",
+        "https://www.anything.com/*", "https://rork.com/*"
+      ],
+      "js": [
+        "src/config.js",
+        "src/storage.js",
+        "src/analytics.js",
+        "src/license.js",
+        "src/ui.js",
+        "src/content.js",
+        "src/history_navigator.js",
+        "src/variables.js"
+      ],
+      "css": ["src/styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

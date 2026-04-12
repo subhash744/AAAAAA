@@ -1,0 +1,14 @@
+{
+  "name": "prompt-archive-api",
+  "version": "1.0.0",
+  "description": "License verification API for Prompt Archive Pro",
+  "main": "api/verify.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vercel": "latest"
+  }
+}

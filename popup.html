@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Suggestio suggests your saved prompts as you type — like Gmail Smart Compose, but for ChatGPT, Claude, Gemini and more.">
+  <meta name="keywords" content="AI prompt suggestions, prompt autocomplete chrome extension, ChatGPT prompt suggestions, AI typing assistant, prompt autofill, Claude prompt helper, Gemini prompt suggestions, AI prompt inline suggestions, prompt suggestion tool, smart prompt assistant">
+  <meta name="author" content="Suggestio">
+  <title>Suggestio — Your prompts, suggested as you type</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+      --text:#0a0a0a; --muted:rgba(0,0,0,0.38); --border:rgba(0,0,0,0.08);
+      --hover:rgba(0,0,0,0.035); --r-sm:9px; --r-pill:20px;
+
+      /* Site brand colours */
+      --c-chatgpt: #10a37f;
+      --c-claude:  #d97706;
+      --c-gemini:  #4285f4;
+      --c-grok:    #8b5cf6;
+      --c-metaai:  #0866ff;
+      --c-deepseek:#4d6bfe;
+      --c-perplexity:#20b2aa;
+      --c-copilot: #0078d4;
+      --c-mistral: #f97316;
+      --c-notebooklm:#ea4335;
+      --c-aistudio:#4285f4;
+      --c-lovable: #ff6b9d;
+      --c-bolt:    #7c3aed;
+      --c-cursor:  #000000;
+      --c-emergent:#06b6d4;
+      --c-v0:      #000000;
+      --c-anything:#6366f1;
+      --c-rork:    #f43f5e;
+    }
+    body { width:520px; min-height:260px; max-height:680px; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#fff; background-image:var(--grain); background-repeat:repeat; color:var(--text); display:flex; flex-direction:column; letter-spacing:-0.01em; font-size:13px; }
+
+    /* ── Header ── */
+    .hdr { display:flex; align-items:center; justify-content:space-between; padding:12px 16px 10px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .logo { display:flex; align-items:center; gap:7px; font-weight:700; font-size:13.5px; }
+    .logo-icon { width:22px; height:22px; background:var(--text); border-radius:7px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .count-pill { font-size:11px; font-weight:600; padding:3px 9px; border-radius:var(--r-pill); background:rgba(0,0,0,0.06); cursor:default; }
+    .count-pill.full { background:#1a0000; color:#ff6b6b; }
+
+    /* ── Analytics ── */
+    .analytics { display:flex; border-bottom:1px solid var(--border); background:rgba(0,0,0,0.012); flex-shrink:0; }
+    .stat { flex:1; padding:8px 12px; display:flex; flex-direction:column; gap:2px; border-right:1px solid var(--border); }
+    .stat:last-child { border-right:none; }
+    .stat-val { font-size:17px; font-weight:700; letter-spacing:-0.03em; line-height:1; }
+    .stat-val.green { color:#1a7a1a; }
+    .stat-lbl { font-size:9px; color:var(--muted); font-weight:600; letter-spacing:0.05em; text-transform:uppercase; }
+    .stat-wide { flex:2; padding:8px 12px; display:flex; flex-direction:column; gap:3px; border-right:none; }
+    .stat-sub { font-size:11px; color:var(--text); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    /* ── Limit banner ── */
+    .limit-banner { display:none; background:rgba(255,240,220,0.7); border-bottom:1px solid rgba(200,140,0,0.15); padding:8px 16px; font-size:11.5px; color:#7a5000; text-align:center; line-height:1.55; flex-shrink:0; }
+    .limit-banner.show { display:block; }
+
+    /* ── Tabs ── */
+    .tabs { display:flex; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .tab { flex:1; padding:8px 4px; text-align:center; font-size:11.5px; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:color 0.15s,border-color 0.15s; user-select:none; }
+    .tab.active { color:var(--text); border-bottom-color:var(--text); }
+    .tab:hover:not(.active) { color:rgba(0,0,0,0.55); }
+
+    /* ── Panels ── */
+    .panel { display:none; flex-direction:column; flex:1; overflow:hidden; min-height:0; }
+    .panel.active { display:flex; }
+
+    /* ── Buttons ── */
+    .btn { padding:7px 14px; border-radius:var(--r-pill); font-size:12px; font-weight:600; cursor:pointer; border:none; transition:background 0.12s,transform 0.08s; white-space:nowrap; font-family:inherit; letter-spacing:-0.01em; }
+    .btn:active { transform:scale(.97); }
+    .btn-primary { background:var(--text); color:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.14); }
+    .btn-primary:hover { background:#222; }
+    .btn-primary:disabled { opacity:.32; cursor:not-allowed; transform:none; }
+    .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+    .btn-ghost:hover { background:var(--hover); }
+    .btn-sm { padding:5px 11px; font-size:11.5px; }
+    kbd { display:inline-block; padding:1px 5px; border:1px solid rgba(0,0,0,0.12); border-radius:4px; font-size:9.5px; font-family:inherit; background:rgba(0,0,0,0.03); color:rgba(0,0,0,0.35); }
+
+    /* Scope buttons (All Sites / This Site / Pick) */
+    .scope-btn { padding:4px 10px; border-radius:20px; border:1.5px solid var(--border); font-size:10.5px; font-weight:600; cursor:pointer; background:transparent; color:var(--muted); font-family:inherit; transition:all 0.12s; white-space:nowrap; }
+    .scope-btn:hover { border-color:rgba(0,0,0,0.2); color:var(--text); }
+    .scope-btn.active { background:var(--text); border-color:var(--text); color:#fff; }
+
+    /* Scrolling sites banner */
+    .sites-banner { overflow:hidden; border-bottom:1px solid var(--border); background:rgba(0,0,0,0.012); padding:5px 0; flex-shrink:0; }
+    .sites-banner-track { display:flex; gap:10px; white-space:nowrap; animation:banner-scroll 28s linear infinite; width:max-content; }
+    .sites-banner-track:hover { animation-play-state:paused; }
+    @keyframes banner-scroll { 0% { transform:translateX(0); } 100% { transform:translateX(-50%); } }
+    .banner-site { display:inline-flex; align-items:center; gap:4px; font-size:10px; font-weight:600; color:rgba(0,0,0,0.4); padding:2px 8px; border-radius:20px; border:1px solid var(--border); background:#fff; flex-shrink:0; }
+    .banner-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+
+    /* ══════════════════════════════════════
+       SITE SELECTOR PILLS
+    ══════════════════════════════════════ */
+    .site-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+    .site-row-label { font-size:10.5px; color:var(--muted); font-weight:600; flex-shrink:0; }
+
+    .site-pill {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:4px 10px; border-radius:20px; border:1.5px solid var(--border);
+      font-size:11px; font-weight:600; cursor:pointer; user-select:none;
+      transition:all 0.12s; color:var(--muted); background:transparent;
+      font-family:inherit;
+    }
+    .site-pill:hover { border-color:rgba(0,0,0,0.22); color:var(--text); }
+
+    /* Active states per site */
+    .site-pill[data-site="chatgpt"].active { background:rgba(16,163,127,0.1); border-color:var(--c-chatgpt); color:var(--c-chatgpt); }
+    .site-pill[data-site="claude"].active  { background:rgba(217,119,6,0.1);  border-color:var(--c-claude);  color:var(--c-claude); }
+    .site-pill[data-site="gemini"].active  { background:rgba(66,133,244,0.1); border-color:var(--c-gemini);  color:var(--c-gemini); }
+    .site-pill[data-site="grok"].active    { background:rgba(139,92,246,0.1); border-color:var(--c-grok);    color:var(--c-grok); }
+    .site-pill[data-site="metaai"].active   { background:rgba(8,102,255,0.1);   border-color:var(--c-metaai);   color:var(--c-metaai); }
+    .site-pill[data-site="deepseek"].active { background:rgba(77,107,254,0.1);  border-color:var(--c-deepseek); color:var(--c-deepseek); }
+    .site-pill[data-site="perplexity"].active{ background:rgba(32,178,170,0.1); border-color:var(--c-perplexity);color:var(--c-perplexity); }
+    .site-pill[data-site="copilot"].active  { background:rgba(0,120,212,0.1);   border-color:var(--c-copilot);  color:var(--c-copilot); }
+    .site-pill[data-site="mistral"].active  { background:rgba(249,115,22,0.1);  border-color:var(--c-mistral);  color:var(--c-mistral); }
+    .site-pill[data-site="notebooklm"].active{ background:rgba(234,67,53,0.1);  border-color:var(--c-notebooklm);color:var(--c-notebooklm); }
+    .site-pill[data-site="aistudio"].active { background:rgba(66,133,244,0.1);  border-color:var(--c-aistudio); color:var(--c-aistudio); }
+    .site-pill[data-site="lovable"].active  { background:rgba(255,107,157,0.1); border-color:var(--c-lovable);  color:var(--c-lovable); }
+    .site-pill[data-site="bolt"].active     { background:rgba(124,58,237,0.1);  border-color:var(--c-bolt);     color:var(--c-bolt); }
+    .site-pill[data-site="cursor"].active   { background:rgba(0,0,0,0.08);      border-color:var(--c-cursor);   color:var(--c-cursor); }
+    .site-pill[data-site="emergent"].active { background:rgba(6,182,212,0.1);   border-color:var(--c-emergent); color:var(--c-emergent); }
+    .site-pill[data-site="v0"].active       { background:rgba(0,0,0,0.08);      border-color:var(--c-v0);       color:var(--c-v0); }
+
+    .site-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .site-pill[data-site="chatgpt"] .site-dot { background:var(--c-chatgpt); }
+    .site-pill[data-site="claude"]  .site-dot { background:var(--c-claude); }
+    .site-pill[data-site="gemini"]  .site-dot { background:var(--c-gemini); }
+    .site-pill[data-site="grok"]    .site-dot { background:var(--c-grok); }
+    .site-pill[data-site="metaai"]  .site-dot { background:var(--c-metaai); }
+    .site-pill[data-site="deepseek"].site-dot { background:var(--c-deepseek); }
+    .site-pill[data-site="perplexity"].site-dot{ background:var(--c-perplexity); }
+    .site-pill[data-site="copilot"] .site-dot { background:var(--c-copilot); }
+    .site-pill[data-site="mistral"] .site-dot { background:var(--c-mistral); }
+    .site-pill[data-site="notebooklm"].site-dot{ background:var(--c-notebooklm); }
+    .site-pill[data-site="aistudio"].site-dot { background:var(--c-aistudio); }
+    .site-pill[data-site="lovable"] .site-dot { background:var(--c-lovable); }
+    .site-pill[data-site="bolt"]    .site-dot { background:var(--c-bolt); }
+    .site-pill[data-site="cursor"]  .site-dot { background:var(--c-cursor); }
+    .site-pill[data-site="emergent"].site-dot { background:var(--c-emergent); }
+    .site-pill[data-site="v0"]      .site-dot { background:var(--c-v0); }
+    .site-pill[data-site="anything"].site-dot { background:var(--c-anything); }
+    .site-pill[data-site="rork"]    .site-dot { background:var(--c-rork); }
+
+    /* ══════════════════════════════════════
+       TABLE
+    ══════════════════════════════════════ */
+    .tbl-wrap { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
+
+    /* pin | prompt | tag | sites | uses | actions */
+    .tbl-cols {
+      display:grid;
+      grid-template-columns: 22px 1fr 64px 90px 36px 52px;
+      align-items:center;
+    }
+
+    .tbl-head { padding:6px 14px 5px; border-bottom:1px solid var(--border); background:rgba(0,0,0,0.015); position:sticky; top:0; z-index:2; flex-shrink:0; }
+    .tbl-head-cell { font-size:9.5px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap; overflow:hidden; user-select:none; }
+    .tbl-head-cell.sort { cursor:pointer; }
+    .tbl-head-cell.sort:hover { color:var(--text); }
+    .sa { margin-left:2px; font-size:9px; opacity:0.6; }
+
+    /* Filter bar under header */
+    .tbl-filter { display:flex; align-items:center; gap:6px; padding:5px 14px 6px; border-bottom:1px solid var(--border); background:rgba(0,0,0,0.008); flex-shrink:0; overflow-x:auto; flex-wrap:nowrap; scrollbar-width:none; -ms-overflow-style:none; }
+    .tbl-filter::-webkit-scrollbar { display:none; }
+    .tbl-filter .filter-pill { flex-shrink:0; }
+    .tbl-filter-label { font-size:9.5px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.05em; flex-shrink:0; }
+    .filter-pill {
+      padding:2px 8px; border-radius:20px; border:1px solid var(--border);
+      font-size:10.5px; font-weight:600; cursor:pointer; user-select:none;
+      transition:all 0.1s; color:var(--muted); background:transparent; font-family:inherit;
+    }
+    .filter-pill:hover { border-color:rgba(0,0,0,0.2); color:var(--text); }
+    .filter-pill.active { background:var(--text); border-color:var(--text); color:#fff; }
+    .filter-pill[data-filter="chatgpt"].active { background:var(--c-chatgpt); border-color:var(--c-chatgpt); }
+    .filter-pill[data-filter="claude"].active  { background:var(--c-claude);  border-color:var(--c-claude); }
+    .filter-pill[data-filter="gemini"].active  { background:var(--c-gemini);  border-color:var(--c-gemini); }
+    .filter-pill[data-filter="grok"].active    { background:var(--c-grok);    border-color:var(--c-grok); }
+    .filter-pill[data-filter="metaai"].active   { background:var(--c-metaai);   border-color:var(--c-metaai); }
+    .filter-pill[data-filter="deepseek"].active { background:var(--c-deepseek); border-color:var(--c-deepseek); }
+    .filter-pill[data-filter="perplexity"].active{ background:var(--c-perplexity);border-color:var(--c-perplexity); }
+    .filter-pill[data-filter="copilot"].active  { background:var(--c-copilot);  border-color:var(--c-copilot); }
+    .filter-pill[data-filter="mistral"].active  { background:var(--c-mistral);  border-color:var(--c-mistral); }
+    .filter-pill[data-filter="notebooklm"].active{ background:var(--c-notebooklm);border-color:var(--c-notebooklm); }
+    .filter-pill[data-filter="aistudio"].active { background:var(--c-aistudio); border-color:var(--c-aistudio); }
+    .filter-pill[data-filter="lovable"].active  { background:var(--c-lovable);  border-color:var(--c-lovable); }
+    .filter-pill[data-filter="bolt"].active     { background:var(--c-bolt);     border-color:var(--c-bolt); }
+    .filter-pill[data-filter="cursor"].active   { background:var(--c-cursor);   border-color:var(--c-cursor); }
+    .filter-pill[data-filter="emergent"].active { background:var(--c-emergent); border-color:var(--c-emergent); }
+    .filter-pill[data-filter="v0"].active       { background:var(--c-v0);       border-color:var(--c-v0); }
+    .filter-pill[data-filter="anything"].active { background:var(--c-anything); border-color:var(--c-anything); }
+    .filter-pill[data-filter="rork"].active     { background:var(--c-rork);     border-color:var(--c-rork); }
+
+    /* Empty state */
+    .empty-state { text-align:center; padding:30px 16px; color:var(--muted); font-size:12.5px; line-height:1.7; }
+    .empty-state strong { display:block; color:rgba(0,0,0,0.5); margin-bottom:4px; font-size:14px; font-weight:700; }
+    .empty-hint { font-size:10.5px; color:rgba(0,0,0,0.22); margin-top:10px; line-height:1.7; }
+
+    /* Row wrapper */
+    .tbl-row-wrap { border-bottom:1px solid rgba(0,0,0,0.042); transition:background 0.09s; }
+    .tbl-row-wrap:last-child { border-bottom:none; }
+    .tbl-row-wrap:hover { background:var(--hover); }
+    .tbl-row-wrap.pinned-row { background:rgba(255,220,0,0.04); }
+    .tbl-row-wrap.pinned-row:hover { background:rgba(255,220,0,0.09); }
+    .tbl-row { padding:7px 14px; cursor:default; }
+
+    /* Pin */
+    .cell-pin { font-size:13px; cursor:pointer; opacity:0.18; user-select:none; transition:opacity 0.15s,transform 0.12s; line-height:1; }
+    .cell-pin:hover { opacity:0.6; transform:scale(1.15); }
+    .cell-pin.is-pinned { opacity:1; }
+
+    /* Prompt text */
+    .cell-prompt { min-width:0; padding-right:8px; }
+    .cell-prompt-text { font-size:12px; color:var(--text); line-height:1.4; font-weight:420; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+    .tbl-row-wrap.expanded .cell-prompt-text { white-space:normal; overflow:visible; text-overflow:unset; }
+    .cell-edit-ta { display:none; width:100%; font-size:12px; padding:5px 8px; border:1px solid rgba(0,0,0,0.18); border-radius:6px; outline:none; font-family:inherit; resize:none; background:#fff; color:var(--text); line-height:1.4; margin-top:2px; }
+    .tbl-row-wrap.editing .cell-prompt-text { display:none; }
+    .tbl-row-wrap.editing .cell-edit-ta { display:block; }
+
+    /* Tag */
+    .cell-tag-pill { font-size:10px; color:rgba(0,0,0,0.42); background:rgba(0,0,0,0.06); padding:2px 7px; border-radius:20px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:fit-content; max-width:100%; }
+
+    /* Sites cell — mini coloured dots */
+    .cell-sites { display:flex; align-items:center; gap:3px; flex-wrap:wrap; }
+    .site-mini-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .site-mini-dot[data-site="chatgpt"] { background:var(--c-chatgpt); }
+    .site-mini-dot[data-site="claude"]  { background:var(--c-claude); }
+    .site-mini-dot[data-site="gemini"]  { background:var(--c-gemini); }
+    .site-mini-dot[data-site="grok"]    { background:var(--c-grok); }
+    .site-mini-all { font-size:9.5px; color:rgba(0,0,0,0.28); font-weight:500; letter-spacing:0.02em; }
+
+    /* Uses */
+    .cell-uses { font-size:11.5px; font-weight:600; color:var(--text); font-variant-numeric:tabular-nums; text-align:center; }
+    .cell-uses.zero { color:rgba(0,0,0,0.22); font-weight:400; }
+
+    /* Actions */
+    .cell-actions { display:flex; align-items:center; gap:2px; justify-content:flex-end; opacity:0; transition:opacity 0.1s; }
+    .tbl-row-wrap:hover .cell-actions { opacity:1; }
+    .tbl-row-wrap.editing .cell-actions { opacity:0; pointer-events:none; }
+    .btn-icon { width:24px; height:24px; border-radius:6px; border:none; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; color:rgba(0,0,0,0.3); transition:background 0.1s,color 0.1s; }
+    .btn-icon:hover { background:rgba(0,0,0,0.07); color:var(--text); }
+    .btn-icon.del:hover { background:rgba(200,0,0,0.07); color:#cc0000; }
+
+    /* Edit bar — full width below grid row */
+    .edit-bar { display:none; flex-direction:column; gap:7px; padding:0 14px 10px; }
+    .tbl-row-wrap.editing .edit-bar { display:flex; }
+    .edit-bar-btns { display:flex; gap:5px; }
+
+    /* ── Footer ── */
+    .footer { padding:9px 14px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-shrink:0; }
+    .limit-bar-wrap { flex:1; }
+    .limit-label { font-size:10.5px; color:var(--muted); margin-bottom:4px; }
+    .limit-bar { height:3px; background:rgba(0,0,0,0.06); border-radius:20px; overflow:hidden; }
+    .limit-bar-fill { height:100%; background:var(--text); border-radius:20px; transition:width 0.3s; }
+    .limit-bar-fill.full { background:#cc2200; }
+    .shortcut-hint { font-size:10px; color:rgba(0,0,0,0.22); white-space:nowrap; }
+
+    /* ── Add panel ── */
+    .add-area { padding:13px 15px; display:flex; flex-direction:column; gap:10px; }
+    .add-field-row { display:flex; gap:8px; align-items:center; }
+    .char-cnt { font-size:10.5px; color:var(--muted); flex-shrink:0; transition:color 0.15s; }
+    .char-cnt.warn { color:#cc4400; }
+    textarea, input[type="text"] { flex:1; padding:8px 11px; border:1px solid var(--border); border-radius:var(--r-sm); font-size:12.5px; color:var(--text); outline:none; background:rgba(0,0,0,0.015); transition:border-color 0.15s; font-family:inherit; }
+    textarea:focus, input[type="text"]:focus { border-color:rgba(0,0,0,0.22); background:#fff; }
+    textarea { resize:none; }
+    #tag-input { max-width:100px; }
+    .add-bottom { display:flex; gap:6px; align-items:center; }
+    .add-section-label { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
+
+    /* ── Import panel ── */
+    .import-panel { flex:1; overflow-y:auto; padding:13px 15px; display:flex; flex-direction:column; gap:12px; }
+    .import-section-label { font-size:10px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; }
+    .import-drop { border:1.5px dashed rgba(0,0,0,0.13); border-radius:var(--r-sm); padding:18px; text-align:center; font-size:12.5px; color:var(--muted); cursor:pointer; transition:border-color 0.15s,background 0.15s; line-height:1.6; }
+    .import-drop:hover, .import-drop.drag-over { border-color:rgba(0,0,0,0.3); background:rgba(0,0,0,0.02); }
+    .import-drop-icon { font-size:22px; margin-bottom:5px; }
+    .import-or { text-align:center; font-size:11px; color:rgba(0,0,0,0.22); }
+    .import-url-row { display:flex; gap:6px; }
+    .import-url-row input { font-size:12px; }
+    .import-result { font-size:12px; padding:7px 11px; border-radius:8px; display:none; font-weight:500; }
+    .import-result.show { display:block; }
+    .import-result.ok  { color:#1a6a1a; background:#f0fff0; border:1px solid #c0e0c0; }
+    .import-result.err { color:#cc0000; background:#fff0f0; border:1px solid #e0c0c0; }
+    .pack-list { display:flex; flex-direction:column; gap:7px; }
+    .pack-item { display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid var(--border); border-radius:var(--r-sm); transition:background 0.1s; }
+    .pack-item:hover { background:var(--hover); }
+    .pack-emoji { font-size:18px; flex-shrink:0; }
+    .pack-info { flex:1; min-width:0; }
+    .pack-name { font-size:12.5px; font-weight:600; }
+    .pack-desc { font-size:11px; color:var(--muted); margin-top:1px; }
+
+    /* ── Toast ── */
+    .toast { position:fixed; bottom:14px; left:50%; transform:translateX(-50%) translateY(8px); background:#0a0a0a; color:#fff; font-size:12px; padding:6px 16px; border-radius:var(--r-pill); opacity:0; transition:opacity 0.18s,transform 0.18s; pointer-events:none; white-space:nowrap; z-index:9999; font-family:inherit; }
+    .toast.error { background:#1a0000; color:#ff7a6b; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* ── Edit Versions ── */
+    .edit-versions { display:flex; gap:5px; flex-wrap:wrap; margin-top:2px; }
+    .version-chip { padding:2px 7px; font-size:10px; background:rgba(0,0,0,0.04); border:1px solid var(--border); border-radius:12px; cursor:pointer; color:var(--muted); font-family:inherit; }
+    .version-chip:hover { background:rgba(0,0,0,0.08); color:var(--text); }
+
+    /* ── Onboarding — slim welcome ── */
+    .onboarding { position:fixed; inset:0; z-index:9999999; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; padding:20px; }
+    .onboarding-box { background:#fff; background-image:var(--grain); background-repeat:repeat; border-radius:16px; padding:24px 22px; width:100%; max-width:380px; box-shadow:0 12px 48px rgba(0,0,0,0.18); text-align:center; }
+    .onb-emoji { font-size:30px; margin-bottom:10px; }
+    .onb-title { font-size:15px; font-weight:800; color:#0a0a0a; letter-spacing:-0.025em; margin-bottom:6px; }
+    .onb-sub { font-size:12px; color:var(--muted); line-height:1.55; margin-bottom:18px; }
+    .onb-quick { display:flex; flex-direction:column; gap:7px; margin-bottom:18px; text-align:left; }
+    .onb-qitem { display:flex; align-items:center; gap:10px; font-size:12px; color:rgba(0,0,0,0.65); }
+    .onb-qicon { font-size:14px; width:28px; height:28px; background:#0a0a0a; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .onb-btn { width:100%; padding:10px; border-radius:100px; border:none; background:#0a0a0a; color:#fff; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; margin-bottom:8px; transition:background 0.12s; }
+    .onb-btn:hover { background:#222; }
+    .onb-link { font-size:11px; color:rgba(0,0,0,0.3); cursor:pointer; background:none; border:none; font-family:inherit; }
+    .onb-link:hover { color:rgba(0,0,0,0.55); }
+
+    /* ── How It Works manual ── */
+    .hiw-overlay { position:fixed; inset:0; z-index:9999998; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; padding:16px; }
+    .hiw-overlay.open { display:flex; }
+    .hiw-box { background:#fff; background-image:var(--grain); background-repeat:repeat; border-radius:16px; width:100%; max-width:430px; max-height:82vh; display:flex; flex-direction:column; box-shadow:0 12px 48px rgba(0,0,0,0.18); overflow:hidden; }
+    .hiw-hdr { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .hiw-hdr-title { font-size:13.5px; font-weight:700; color:#0a0a0a; letter-spacing:-0.02em; }
+    .hiw-close { width:26px; height:26px; border-radius:8px; background:none; border:none; cursor:pointer; font-size:15px; color:var(--muted); display:flex; align-items:center; justify-content:center; transition:background 0.1s; font-family:inherit; }
+    .hiw-close:hover { background:rgba(0,0,0,0.06); color:#0a0a0a; }
+    .hiw-body { flex:1; overflow-y:auto; padding:14px 18px; display:flex; flex-direction:column; gap:10px; }
+    .hiw-section { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-top:6px; margin-bottom:2px; }
+    .hiw-section:first-child { margin-top:0; }
+    .hiw-item { display:flex; gap:11px; align-items:flex-start; padding:10px 11px; border-radius:10px; background:rgba(0,0,0,0.018); border:1px solid rgba(0,0,0,0.05); }
+    .hiw-icon { font-size:16px; width:34px; height:34px; background:#0a0a0a; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .hiw-text strong { display:block; font-size:12.5px; color:#0a0a0a; font-weight:700; margin-bottom:2px; }
+    .hiw-text span { font-size:11.5px; color:rgba(0,0,0,0.55); line-height:1.5; display:block; }
+    .hiw-text code { background:rgba(0,0,0,0.07); padding:1px 5px; border-radius:4px; font-size:10.5px; font-family:monospace; color:#0a0a0a; }
+    .hiw-footer { padding:12px 18px; border-top:1px solid var(--border); flex-shrink:0; }
+    .hiw-upgrade { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:10px; background:rgba(200,80,10,0.06); border:1px solid rgba(200,80,10,0.15); }
+    .hiw-upgrade-text { font-size:12px; color:#0a0a0a; font-weight:600; }
+    .hiw-upgrade-sub { font-size:11px; color:rgba(0,0,0,0.45); margin-top:1px; }
+    .hiw-upgrade-btn { padding:6px 14px; border-radius:20px; border:none; background:#c8500a; color:#fff; font-size:11.5px; font-weight:700; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background 0.12s; flex-shrink:0; }
+    .hiw-upgrade-btn:hover { background:#b04508; }
+
+    ::-webkit-scrollbar { width:4px; }
+    ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.09); border-radius:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="hdr">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 11 12 14 22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+    </div>
+    Suggestio
+  </div>
+  <span class="count-pill" id="count-pill">0/25</span>
+</div>
+
+<!-- Sites banner -->
+<div class="sites-banner">
+  <div class="sites-banner-track" id="sites-banner-track">
+    <span class="banner-site"><span class="banner-dot" style="background:#10a37f"></span>ChatGPT</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#d97706"></span>Claude</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#4285f4"></span>Gemini</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#8b5cf6"></span>Grok</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#0078d4"></span>Copilot</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#4d6bfe"></span>DeepSeek</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#20b2aa"></span>Perplexity</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#0866ff"></span>Meta AI</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#f97316"></span>Mistral</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#4285f4"></span>AI Studio</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#ea4335"></span>NotebookLM</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#ff6b9d"></span>Lovable</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#7c3aed"></span>Bolt</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#06b6d4"></span>Emergent</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#000000"></span>v0</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#6366f1"></span>Anything</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#f43f5e"></span>Rork</span>
+    <!-- duplicate for seamless loop -->
+    <span class="banner-site"><span class="banner-dot" style="background:#10a37f"></span>ChatGPT</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#d97706"></span>Claude</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#4285f4"></span>Gemini</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#8b5cf6"></span>Grok</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#0078d4"></span>Copilot</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#4d6bfe"></span>DeepSeek</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#20b2aa"></span>Perplexity</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#0866ff"></span>Meta AI</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#f97316"></span>Mistral</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#4285f4"></span>AI Studio</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#ea4335"></span>NotebookLM</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#ff6b9d"></span>Lovable</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#7c3aed"></span>Bolt</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#06b6d4"></span>Emergent</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#000000"></span>v0</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#6366f1"></span>Anything</span>
+    <span class="banner-site"><span class="banner-dot" style="background:#f43f5e"></span>Rork</span>
+  </div>
+</div>
+
+<!-- Analytics -->
+<div class="analytics">
+  <div class="stat"><div class="stat-val" id="stat-count">0</div><div class="stat-lbl">Saved</div></div>
+  <div class="stat"><div class="stat-val" id="stat-uses">0</div><div class="stat-lbl">Uses</div></div>
+  <div class="stat stat-wide"><div class="stat-lbl">🔥 Most Used</div><div class="stat-sub" id="stat-most">—</div></div>
+</div>
+
+<!-- Limit banner -->
+<div class="limit-banner" id="limit-banner">
+  <strong>25/25 prompts saved.</strong> Delete some to free up space.
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" data-tab="prompts">My Prompts</div>
+  <div class="tab" data-tab="add">+ Add</div>
+  <div class="tab" data-tab="import">📦 Packs</div>
+</div>
+
+<!-- PANEL: My Prompts -->
+<div class="panel active" id="panel-prompts">
+  <div class="tbl-wrap" id="tbl-wrap">
+
+    <!-- Search bar -->
+    <div style="padding:8px 14px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.015);">
+      <input type="text" id="search-input" placeholder="🔍 Search prompts…" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:20px;font-size:12px;outline:none;background:#fff;">
+    </div>
+
+    <!-- Bulk operation bar -->
+    <div id="bulk-bar" style="display:none;padding:8px 14px;border-bottom:1px solid var(--border);background:rgba(200,80,10,0.06);align-items:center;gap:10px;">
+      <span style="font-size:11px;font-weight:600;color:#c8500a;flex:1;">Select prompts to delete</span>
+      <button type="button" id="btn-bulk-delete" class="btn btn-primary btn-sm" style="background:#c8500a;border-color:#c8500a;">Delete Selected</button>
+      <button type="button" id="btn-bulk-cancel" class="btn btn-ghost btn-sm">Cancel</button>
+    </div>
+
+    <!-- Sticky table header -->
+    <div class="tbl-head tbl-cols">
+      <div class="tbl-head-cell"></div>
+      <div class="tbl-head-cell sort" data-sort="text">Prompt <span class="sa" id="sa-text"></span></div>
+      <div class="tbl-head-cell sort" data-sort="tag">Tag <span class="sa" id="sa-tag"></span></div>
+      <div class="tbl-head-cell">Sites</div>
+      <div class="tbl-head-cell sort" data-sort="uses" style="text-align:center">Uses <span class="sa" id="sa-uses">↓</span></div>
+      <div class="tbl-head-cell"></div>
+    </div>
+
+    <!-- Site filter bar -->
+    <div class="tbl-filter">
+      <span class="tbl-filter-label">Filter:</span>
+      <button type="button" class="filter-pill active" data-filter="all">All</button>
+      <button type="button" class="filter-pill" data-filter="chatgpt">ChatGPT</button>
+      <button type="button" class="filter-pill" data-filter="claude">Claude</button>
+      <button type="button" class="filter-pill" data-filter="gemini">Gemini</button>
+      <button type="button" class="filter-pill" data-filter="grok">Grok</button>
+      <button type="button" class="filter-pill" data-filter="copilot">Copilot</button>
+      <button type="button" class="filter-pill" data-filter="deepseek">DeepSeek</button>
+      <button type="button" class="filter-pill" data-filter="perplexity">Perplexity</button>
+      <button type="button" class="filter-pill" data-filter="metaai">Meta AI</button>
+      <button type="button" class="filter-pill" data-filter="mistral">Mistral</button>
+      <button type="button" class="filter-pill" data-filter="aistudio">AI Studio</button>
+      <button type="button" class="filter-pill" data-filter="notebooklm">NotebookLM</button>
+      <button type="button" class="filter-pill" data-filter="lovable">Lovable</button>
+      <button type="button" class="filter-pill" data-filter="bolt">Bolt</button>
+      <button type="button" class="filter-pill" data-filter="emergent">Emergent</button>
+      <button type="button" class="filter-pill" data-filter="v0">v0</button>
+      <button type="button" class="filter-pill" data-filter="anything">Anything</button>
+      <button type="button" class="filter-pill" data-filter="rork">Rork</button>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="empty-state">
+      <strong>No prompts yet</strong>
+      Use the + Add tab or import a pack.<br/>Suggestions appear as you type on ChatGPT, Claude, Gemini &amp; Grok.
+      <div class="empty-hint"><kbd>;</kbd><kbd>tag</kbd> to filter &nbsp;·&nbsp; <kbd>Ctrl</kbd><kbd>Space</kbd> to browse</div>
+    </div>
+
+    <div id="tbl-body"></div>
+  </div>
+
+  <div class="footer">
+    <div class="limit-bar-wrap">
+      <div class="limit-label" id="limit-label">0 of 25 saved</div>
+      <div class="limit-bar"><div class="limit-bar-fill" id="limit-fill" style="width:0%"></div></div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button type="button" id="btn-bulk-mode" class="btn-icon" title="Bulk delete" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);">🗑️</button>
+      <button type="button" id="btn-export" class="btn-icon" title="Export prompts" style="width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);">💾</button>
+      <div class="shortcut-hint"><kbd>Ctrl</kbd><kbd>Space</kbd></div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL: Add -->
+<div class="panel" id="panel-add">
+  <div class="add-area">
+    <textarea id="new-prompt" placeholder="Paste or type a prompt to save…" rows="4"></textarea>
+
+    <div class="add-field-row">
+      <input type="text" id="tag-input" placeholder="Tag  e.g. email" maxlength="30" style="max-width:110px"/>
+      <span class="char-cnt" id="char-cnt" style="margin-left:auto">0 chars</span>
+    </div>
+
+    <!-- Site selector -->
+    <div>
+      <div class="add-section-label" style="margin-bottom:7px">Show on — <span id="site-hint" style="font-weight:400;text-transform:none;color:var(--muted);letter-spacing:0">All sites (default)</span></div>
+      <div class="site-row" id="site-selector" style="max-height:80px;overflow-y:auto;padding:2px 0;">
+        <button type="button" class="site-pill" data-site="chatgpt"><span class="site-dot"></span>ChatGPT</button>
+        <button type="button" class="site-pill" data-site="claude"><span class="site-dot"></span>Claude</button>
+        <button type="button" class="site-pill" data-site="gemini"><span class="site-dot"></span>Gemini</button>
+        <button type="button" class="site-pill" data-site="grok"><span class="site-dot"></span>Grok</button>
+        <button type="button" class="site-pill" data-site="copilot"><span class="site-dot"></span>Copilot</button>
+        <button type="button" class="site-pill" data-site="deepseek"><span class="site-dot"></span>DeepSeek</button>
+        <button type="button" class="site-pill" data-site="perplexity"><span class="site-dot"></span>Perplexity</button>
+        <button type="button" class="site-pill" data-site="metaai"><span class="site-dot"></span>Meta AI</button>
+        <button type="button" class="site-pill" data-site="mistral"><span class="site-dot"></span>Mistral</button>
+        <button type="button" class="site-pill" data-site="notebooklm"><span class="site-dot"></span>NotebookLM</button>
+        <button type="button" class="site-pill" data-site="aistudio"><span class="site-dot"></span>AI Studio</button>
+        <button type="button" class="site-pill" data-site="lovable"><span class="site-dot"></span>Lovable</button>
+        <button type="button" class="site-pill" data-site="bolt"><span class="site-dot"></span>Bolt</button>
+        <button type="button" class="site-pill" data-site="emergent"><span class="site-dot"></span>Emergent</button>
+        <button type="button" class="site-pill" data-site="v0"><span class="site-dot"></span>v0</button>
+        <button type="button" class="site-pill" data-site="anything"><span class="site-dot"></span>Anything</button>
+        <button type="button" class="site-pill" data-site="rork"><span class="site-dot"></span>Rork</button>
+        <button type="button" class="site-pill" data-site="midjourney"><span class="site-dot"></span>Midjourney</button>
+        <button type="button" class="site-pill" data-site="runway"><span class="site-dot"></span>Runway</button>
+        <button type="button" class="site-pill" data-site="sora"><span class="site-dot"></span>Sora</button>
+      </div>
+    </div>
+
+    <div class="add-bottom" style="flex-direction:column;gap:8px;align-items:stretch;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:10.5px;font-weight:600;color:var(--muted);flex-shrink:0;">Save for:</span>
+        <button type="button" id="scope-all" class="scope-btn active" data-scope="all">🌐 All Sites</button>
+        <button type="button" id="scope-this" class="scope-btn" data-scope="this">📍 This Site Only</button>
+        <button type="button" id="scope-pick" class="scope-btn" data-scope="pick">✏️ Pick Sites</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="flex:1;font-size:11px;color:rgba(0,0,0,0.28)"><kbd>Ctrl</kbd><kbd>Enter</kbd> to save</span>
+        <button class="btn btn-primary" id="save-btn">Save Prompt</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PANEL: Import / Packs -->
+<div class="panel" id="panel-import">
+  <div class="import-panel">
+    <div class="import-section-label">Drop a JSON file or paste a URL</div>
+    <label class="import-drop" id="import-drop">
+      <div class="import-drop-icon">📂</div>
+      <div>Drop JSON file here or <u>click to browse</u></div>
+      <div style="font-size:11px;color:rgba(0,0,0,0.25);margin-top:3px">Format: [{text, tag, sites}, …]</div>
+      <input type="file" id="import-file" accept=".json" style="display:none"/>
+    </label>
+    <div class="import-or">— or paste a URL —</div>
+    <div class="import-url-row">
+      <input type="text" id="import-url" placeholder="https://example.com/prompts.json"/>
+      <button type="button" class="btn btn-ghost btn-sm" id="import-url-btn">Load</button>
+    </div>
+    <div class="import-result" id="import-result"></div>
+    <div class="import-section-label">Featured Packs</div>
+    <div class="pack-list">
+      <div class="pack-item" data-pack="founders">
+        <div class="pack-emoji">🚀</div>
+        <div class="pack-info"><div class="pack-name">Founder Toolkit</div><div class="pack-desc">Cold email · pitch · GTM · sales objections</div></div>
+        <button type="button" class="btn btn-ghost btn-sm pack-load-btn">Load</button>
+      </div>
+      <div class="pack-item" data-pack="writing">
+        <div class="pack-emoji">✍️</div>
+        <div class="pack-info"><div class="pack-name">Content Writing</div><div class="pack-desc">Threads · LinkedIn · captions · headlines</div></div>
+        <button type="button" class="btn btn-ghost btn-sm pack-load-btn">Load</button>
+      </div>
+      <div class="pack-item" data-pack="dev">
+        <div class="pack-emoji">💻</div>
+        <div class="pack-info"><div class="pack-name">Developer Pack</div><div class="pack-desc">Code review · debug · PR descriptions · docs</div></div>
+        <button type="button" class="btn btn-ghost btn-sm pack-load-btn">Load</button>
+      </div>
+      <div class="pack-item" data-pack="marketing">
+        <div class="pack-emoji">📣</div>
+        <div class="pack-info"><div class="pack-name">Marketing Pack</div><div class="pack-desc">Ads · email sequences · landing page copy</div></div>
+        <button type="button" class="btn btn-ghost btn-sm pack-load-btn">Load</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Welcome overlay — slim, shown once on first install -->
+<div class="onboarding" id="onboarding" style="display:none">
+  <div class="onboarding-box">
+    <div class="onb-emoji">⚡</div>
+    <div class="onb-title">Welcome to Suggestio</div>
+    <p class="onb-sub">Your prompts, suggested as you type — like Gmail Smart Compose for AI.</p>
+    <div class="onb-quick">
+      <div class="onb-qitem"><div class="onb-qicon">💾</div><span>Click <strong>Save</strong> near any AI input to save a prompt</span></div>
+      <div class="onb-qitem"><div class="onb-qicon">⚡</div><span>Start typing — matching prompts appear automatically</span></div>
+      <div class="onb-qitem"><div class="onb-qicon">⌨️</div><span>Press <strong>Ctrl+Space</strong> to browse all your prompts</span></div>
+    </div>
+    <button class="onb-btn" id="btn-onb-done">Get Started →</button>
+    <button class="onb-link" id="btn-onb-howto">Show me all features</button>
+  </div>
+</div>
+
+<!-- How It Works manual — opens anytime from footer button -->
+<div class="hiw-overlay" id="hiw-overlay">
+  <div class="hiw-box">
+    <div class="hiw-hdr">
+      <span class="hiw-hdr-title">📖 How It Works</span>
+      <button class="hiw-close" id="hiw-close">✕</button>
+    </div>
+    <div class="hiw-body">
+
+      <div class="hiw-section">Core features</div>
+      <div class="hiw-item">
+        <div class="hiw-icon">⚡</div>
+        <div class="hiw-text">
+          <strong>Autocomplete as you type</strong>
+          <span>On any supported AI site, start typing and matching saved prompts appear in a dropdown. Click to insert. Arrow keys to navigate.</span>
+        </div>
+      </div>
+      <div class="hiw-item">
+        <div class="hiw-icon">💾</div>
+        <div class="hiw-text">
+          <strong>Save button near input</strong>
+          <span>A floating <strong>Save</strong> button appears near the AI input box. Click it to save what you just typed. Drag the <strong>⠿</strong> handle to move it anywhere.</span>
+        </div>
+      </div>
+      <div class="hiw-item">
+        <div class="hiw-icon">⌨️</div>
+        <div class="hiw-text">
+          <strong>Ctrl+Space to browse all</strong>
+          <span>Press <strong>Ctrl+Space</strong> on any AI site to open a dropdown of all your saved prompts — even without typing anything first.</span>
+        </div>
+      </div>
+      <div class="hiw-item">
+        <div class="hiw-icon">🏷️</div>
+        <div class="hiw-text">
+          <strong>Tag filtering</strong>
+          <span>Type <code>;email</code> to instantly filter to prompts tagged "email". Type <code>;code</code> for code prompts. Works in the autocomplete dropdown.</span>
+        </div>
+      </div>
+
+      <div class="hiw-section">Organisation</div>
+      <div class="hiw-item">
+        <div class="hiw-icon">📌</div>
+        <div class="hiw-text">
+          <strong>Pin top prompts</strong>
+          <span>Click ⭐ on any prompt to pin it. Pinned prompts always appear first in suggestions.</span>
+        </div>
+      </div>
+      <div class="hiw-item">
+        <div class="hiw-icon">📦</div>
+        <div class="hiw-text">
+          <strong>Starter packs</strong>
+          <span>Go to the <strong>📦 Packs</strong> tab. Load the Founder Toolkit, Developer Pack, Content Writing, or Marketing Pack — 5 ready prompts each.</span>
+        </div>
+      </div>
+      <div class="hiw-item">
+        <div class="hiw-icon">📜</div>
+        <div class="hiw-text">
+          <strong>Chat History Navigator</strong>
+          <span>A small button appears next to the Save button on AI chat sites. Click it to see all your questions in the current chat — click any to jump to it.</span>
+        </div>
+      </div>
+
+    </div>
+    <div class="hiw-footer">
+      <div style="padding:4px 0;font-size:11.5px;color:rgba(0,0,0,0.45);text-align:center;">Free &amp; local — no account, no sign-in needed.</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Action footer -->
+<div style="display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;border-top:1px solid var(--border);background:rgba(0,0,0,0.012);flex-shrink:0;flex-wrap:wrap;">
+  <button type="button" id="btn-how-it-works" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid #0866ff;font-size:11px;font-weight:600;cursor:pointer;background:rgba(8,102,255,0.08);color:#0052cc;font-family:inherit;transition:all 0.12s;">ℹ️ How it Works</button>
+  <button type="button" id="btn-rate" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid #f59e0b;font-size:11px;font-weight:600;cursor:pointer;background:rgba(245,158,11,0.08);color:#b45309;font-family:inherit;transition:all 0.12s;">⭐ Rate Extension</button>
+  <button type="button" id="btn-feedback" style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid #f59e0b;font-size:11px;font-weight:600;cursor:pointer;background:rgba(245,158,11,0.08);color:#b45309;font-family:inherit;transition:all 0.12s;">💬 Give Feedback</button>
+  <button type="button" id="btn-backup" style="display:none;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;border:1.5px solid #10a37f;font-size:11px;font-weight:600;cursor:pointer;background:rgba(16,163,127,0.08);color:#0a7a5e;font-family:inherit;transition:all 0.12s;">☁️ Backup</button>
+</div>
+
+<!-- License Activation Modal -->
+<div class="license-modal" id="license-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:16px;padding:24px;max-width:320px;width:90%;box-shadow:0 10px 40px rgba(0,0,0,0.2);">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:32px;margin-bottom:8px;">🔑</div>
+      <div style="font-size:16px;font-weight:700;">Enter your license key</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">Check your email from Dodo Payments.<br>Paste your key below to unlock Pro instantly.</div>
+    </div>
+    <div style="background:#f8f9fa;border-radius:12px;padding:16px;margin-bottom:20px;text-align:left;">
+      <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:8px;">Free Plan</div>
+      <div style="font-size:12px;color:#666;">✓ 25 free prompts</div>
+      <div style="font-size:12px;color:#666;">✓ Works on ChatGPT, Claude, Gemini</div>
+    </div>
+    <input type="text" id="license-key-input" placeholder="XXXX-XXXX-XXXX-XXXX" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;text-align:center;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
+    <div id="license-error" style="color:#dc2626;font-size:11px;text-align:center;margin-bottom:12px;display:none;"></div>
+    <div id="license-success" style="color:#16a34a;font-size:11px;text-align:center;margin-bottom:12px;display:none;">✓ Pro activated!</div>
+    <div style="display:flex;gap:8px;">
+      <button type="button" id="btn-activate-license" style="flex:1;padding:10px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#10a37f 0%,#059669 100%);color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Activate →</button>
+      <button type="button" id="btn-cancel-license" style="padding:10px 16px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:13px;font-weight:500;cursor:pointer;">Cancel</button>
+    </div>
+    <div style="text-align:center;margin-top:12px;">
+      <button type="button" id="btn-restore-license" style="font-size:11px;color:#64748b;background:transparent;border:none;cursor:pointer;text-decoration:underline;">🔄 Restore License (already paid?)</button>
+    </div>
+    <div style="text-align:center;margin-top:8px;font-size:11px;color:var(--muted);">
+      Didn't get an email? Check spam or <a href="#" id="link-support" style="color:#10a37f;font-weight:600;">contact support</a>
+    </div>
+  </div>
+</div>
+
+<!-- Paywall Modal (shown when free user hits 25-prompt limit) -->
+<div id="paywall-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:10000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:18px;padding:28px 24px;max-width:320px;width:92%;box-shadow:0 16px 56px rgba(0,0,0,0.22);text-align:center;">
+    <div style="font-size:36px;margin-bottom:10px;">⚡</div>
+    <div style="font-size:16px;font-weight:800;color:#0a0a0a;letter-spacing:-0.025em;margin-bottom:6px;">You've saved 25 prompts</div>
+    <div style="font-size:12px;color:rgba(0,0,0,0.5);line-height:1.6;margin-bottom:18px;">
+      You've hit the free limit.<br>
+      Upgrade once — keep unlimited prompts forever.
+    </div>
+    <div style="background:#f8fafc;border-radius:12px;padding:14px 16px;margin-bottom:18px;text-align:left;">
+      <div style="font-size:13px;font-weight:700;color:#0a0a0a;margin-bottom:8px;">⚡ Pro — $7 one-time</div>
+      <div style="font-size:12px;color:#334155;line-height:1.7;">
+        ✓ Unlimited prompts<br>
+        ✓ All AI sites<br>
+        ✓ Prompt variables ({{name}})<br>
+        ✓ Import / Export<br>
+        ✓ No subscription. Ever.
+      </div>
+    </div>
+    <button type="button" id="btn-upgrade-pro" style="width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#10a37f 0%,#059669 100%);color:#fff;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px;font-family:inherit;">Get Pro for $7 →</button>
+    <div style="font-size:11px;color:#64748b;margin-bottom:14px;">One-time. No subscription. No renewal. No tricks.</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:16px;">
+      <a href="#" id="link-have-license" style="font-size:11px;color:#10a37f;font-weight:600;text-decoration:none;">I already have a key →</a>
+      <button type="button" id="btn-dismiss-paywall" style="font-size:11px;color:#94a3b8;background:transparent;border:none;cursor:pointer;font-family:inherit;">Dismiss</button>
+    </div>
+  </div>
+</div>
+
+<!-- Post-Payment Success Screen -->
+<div id="success-screen" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#fff;z-index:10001;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px;">
+  <div style="font-size:64px;margin-bottom:24px;">⚡</div>
+  <div style="font-size:24px;font-weight:800;margin-bottom:12px;color:#0f172a;">You're in. Welcome to Pro.</div>
+  <div style="font-size:15px;color:#64748b;line-height:1.6;max-width:320px;margin-bottom:24px;">
+    Your prompts are now unlimited and syncing across your devices.<br><br>
+    <strong>You paid once. This never expires.</strong>
+  </div>
+  <div style="font-size:14px;color:#334155;background:#f8fafc;border-radius:12px;padding:16px 20px;border:1px solid #e2e8f0;">
+    Now go build your perfect prompt library.
+  </div>
+  <button type="button" id="btn-close-success" style="margin-top:32px;padding:12px 32px;border-radius:10px;border:none;background:linear-gradient(135deg,#10a37f 0%,#059669 100%);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Start using Pro →</button>
+</div>
+
+<!-- Pro Status Indicator (shown in header) -->
+<div id="pro-badge" style="display:none;position:absolute;top:12px;right:12px;padding:4px 10px;border-radius:20px;background:linear-gradient(135deg,#f59e0b 0%,#d97706 100%);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">⚡ Pro</div>
+
+<script src="src/config.js"></script>
+<script src="src/storage.js"></script>
+<script src="src/analytics.js"></script>
+<script src="src/license.js"></script>
+<script src="src/auth.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
