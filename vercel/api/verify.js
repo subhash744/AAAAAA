@@ -27,6 +27,7 @@ export default async function handler(req, res) {
   try {
     console.log('[Verify] Checking license key:', license_key.slice(0, 8) + '...');
     console.log('[Verify] DODO_API_KEY exists:', !!process.env.DODO_API_KEY);
+    console.log('[Verify] DODO_API_KEY starts with:', process.env.DODO_API_KEY?.slice(0, 10) + '...');
     
     // Try multiple Dodo API endpoints
     let licenseData = null;
